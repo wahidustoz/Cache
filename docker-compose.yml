@@ -1,0 +1,19 @@
+version: '3.1'
+
+services:
+
+    memory:
+        image: memorycache
+        environment:
+            - ASPNETCORE_URLS=http://+:5000
+        expose: 
+            - 5000
+   
+    nginx:
+        image: nginx:latest
+        volumes:
+          - ./nginx.conf:/etc/nginx/nginx.conf
+        depends_on:
+          - memory
+        ports:
+          - 5000:5000
