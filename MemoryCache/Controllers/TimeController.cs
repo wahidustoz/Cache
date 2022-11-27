@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using System.Net;
 
 namespace MemoryCache.Controllers;
 
@@ -7,35 +8,38 @@ namespace MemoryCache.Controllers;
 [Route("[controller]")]
 public class TimeController : ControllerBase
 {
-    [HttpGet("[action]")]
+    [HttpGet("fresh")]
     public IActionResult Fresh()
-       => Ok(new { time = GetTimeAndIP() });
+        => Ok(new { time = GetTime(), host = Dns.GetHostName() });
 
     [HttpGet("every-5-seconds")]
     public async Task<IActionResult> Every5SecondsAsync([FromServices] IMemoryCache cache)
     {
-        var key = $"time:every-5-seconds";
-        var time = await cache.GetOrCreateAsync<string>(key, (cacheEntry) =>
+        var key = "every-5-seconds";
+        var time = await cache.GetOrCreateAsync(key, (entry) =>
         {
-            cacheEntry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5);
-            return Task.FromResult(GetTimeAndIP());
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5);
+
+            return Task.FromResult(GetTime());
         });
 
-        return Ok(time);
+        return Ok(new { time = time, host = Dns.GetHostName() });
     }
 
     [HttpGet("use-it-or-lose-it")]
     public async Task<IActionResult> UseItOrLoseItAsync([FromServices] IMemoryCache cache)
     {
-        var key = $"time:use-it-or-lose-it";
-        var time = await cache.GetOrCreateAsync<string>(key, (cacheEntry) =>
+        var key = "use-it-or-lose-it";
+        var time = await cache.GetOrCreateAsync(key, (cacheEntry) =>
         {
-            cacheEntry.SlidingExpiration = TimeSpan.FromSeconds(1);
-            return Task.FromResult(GetTimeAndIP());
+            cacheEntry.SlidingExpiration = TimeSpan.FromSeconds(2);
+            cacheEntry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10);
+            return Task.FromResult(GetTime());
         });
 
-        return Ok(time);
+        return Ok(new { time = time, host = Dns.GetHostName() });
     }
 
-    private string GetTimeAndIP() => $"{DateTime.Now.ToString("yyyyy/MM/dd HH:mm:ss")} @ { System.Net.Dns.GetHostName() }";
+
+    private string GetTime() => DateTime.Now.ToString("HH:mm:ss");
 }
